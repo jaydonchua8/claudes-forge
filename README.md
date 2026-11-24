@@ -1,4 +1,4 @@
-# NotchForge
+# Claude's Forge
 
 A little pixel robot blacksmith that lives in your MacBook's notch and shows what Claude Code is doing.
 
