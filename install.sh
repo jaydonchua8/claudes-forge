@@ -11,7 +11,7 @@ mkdir -p "$DIR" "$HOME/.claude" "$HOME/Library/LaunchAgents"
 # 1. hook script: appends one trimmed JSON line per Claude Code event
 cat > "$HOOK" <<'EOF'
 #!/bin/sh
-/usr/bin/jq -c 'del(.tool_response) | walk(if type == "string" then .[0:400] else . end)' \
+/usr/bin/jq -c --argjson ts "$(date +%s)" '. + {ts: $ts} | del(.tool_response) | walk(if type == "string" then .[0:400] else . end)' \
   >> "$HOME/.notchforge/events.jsonl" 2>/dev/null
 exit 0
 EOF
