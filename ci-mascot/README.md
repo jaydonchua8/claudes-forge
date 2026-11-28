@@ -86,3 +86,17 @@ fields (`reason`, `failing`, `source_newest`) are there for tooltips or logs.
 
 `name`, `status`, `conclusion`, `created_at`, plus `head_branch` for the optional
 `--branch-filter`. `html_url` and other fields are ignored.
+
+## Driving Claude's Forge
+
+Claude's Forge polls `~/.notchforge/ci-state.json` every five seconds. Write the state there:
+
+```sh
+python3 ci_mascot.py --runs runs.json --out ~/.notchforge/ci-state.json
+```
+
+- `alarm` shows an amber "CI failing" alert with the failing workflow names. Click the island to dismiss it. It stays dismissed until CI changes.
+- `working` starts the anvil animation with "CI running…".
+- `sleep` clears the CI alert or the CI animation. Claude's own alerts and work are never cleared by CI.
+
+Run it on a schedule (for example, from cron or a launch agent) to keep the robot current.

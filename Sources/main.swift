@@ -3,9 +3,11 @@ import SwiftUI
 
 // NotchForge: a little smith bot that lives in the MacBook notch.
 // It tails ~/.notchforge/events.jsonl, which Claude Code hooks append to.
+// It also polls ~/.notchforge/ci-state.json, written by the ci-mascot tool.
 
 let forgeDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".notchforge")
 let eventsURL = forgeDir.appendingPathComponent("events.jsonl")
+let ciStateURL = forgeDir.appendingPathComponent("ci-state.json")
 
 // MARK: - Helpers
 
@@ -95,6 +97,9 @@ final class Forge: ObservableObject {
 
     private var sessions: [String: Session] = [:]
     private var queue: [String] = []
+    private var ciKey = ""
+    private var ciAlarm = false
+    private var ciRunning = false
     private var strikeTimer: Timer?
     private var staleTimer: Timer?
     private var collapse: DispatchWorkItem?
@@ -213,10 +218,57 @@ final class Forge: ObservableObject {
         for (k, s) in sessions where s.working && s.lastEvent < cutoff { quiet(k) }
     }
 
+    // MARK: CI
+
+    // Called every few seconds with the latest ci-state.json. Only acts when the state changes,
+    // so a dismissed CI alarm stays dismissed until CI changes again.
+    func handleCI(state: String, failing: [String]) {
+        let key = state + "|" + failing.joined(separator: ",")
+        guard key != ciKey else { return }
+        ciKey = key
+
+        if state == "alarm" {
+            ciAlarm = true
+            collapse?.cancel()
+            stopStrikes()
+            mode = .needsInput
+            expanded = true
+            line = "CI failing · " + failing.joined(separator: ", ")
+            lineID += 1
+            play("Ping")
+        } else if ciAlarm {
+            ciAlarm = false
+            if mode == .needsInput {
+                mode = anyWorking ? .working : .idle
+                expanded = false
+            }
+        }
+
+        if state == "working" {
+            ciRunning = true
+            if mode == .idle {
+                workStart = Date()
+                line = ""
+                lineID += 1
+                mode = .working
+                push("CI running…")
+                startStrikes()
+            }
+        } else if ciRunning {
+            ciRunning = false
+            if mode == .working && !anyWorking {
+                stopStrikes()
+                mode = .idle
+                expanded = false
+            }
+        }
+    }
+
     func tap() {
         switch mode {
         case .done, .needsInput:
             collapse?.cancel()
+            ciAlarm = false
             mode = anyWorking ? .working : .idle
             expanded = false
             if mode == .working { startStrikes() }
@@ -828,10 +880,31 @@ final class Host: NSHostingView<IslandView> {
     }
 }
 
+// Polls ci-state.json every five seconds and passes changes to the forge.
+final class CIWatcher {
+    private let forge: Forge
+    private var timer: Timer?
+
+    init(forge: Forge) {
+        self.forge = forge
+        poll()
+        timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in self?.poll() }
+    }
+
+    private func poll() {
+        guard let data = try? Data(contentsOf: ciStateURL),
+              let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let state = o["state"] as? String else { return }
+        let failing = o["failing"] as? [String] ?? []
+        forge.handleCI(state: state, failing: failing)
+    }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let forge = Forge()
     var panel: IslandPanel!
     var tail: Tail?
+    var ci: CIWatcher?
 
     func applicationDidFinishLaunching(_ note: Notification) {
         if let id = Bundle.main.bundleIdentifier,
@@ -855,6 +928,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(place),
                                                name: NSApplication.didChangeScreenParametersNotification, object: nil)
         tail = Tail(url: eventsURL) { [weak self] o in self?.forge.handle(o) }
+        ci = CIWatcher(forge: forge)
         if CommandLine.arguments.contains("--demo") { forge.demo() }
     }
 
