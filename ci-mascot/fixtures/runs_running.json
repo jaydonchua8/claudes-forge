@@ -1,0 +1,49 @@
+{
+  "total_count": 4,
+  "workflow_runs": [
+    {
+      "id": 9100000210,
+      "name": "CI",
+      "head_branch": "main",
+      "event": "push",
+      "status": "in_progress",
+      "conclusion": null,
+      "run_number": 426,
+      "created_at": "2026-11-27T15:00:00Z",
+      "html_url": "https://github.com/example-org/example-app/actions/runs/9100000210"
+    },
+    {
+      "id": 9100000209,
+      "name": "Deploy",
+      "head_branch": "main",
+      "event": "workflow_dispatch",
+      "status": "queued",
+      "conclusion": null,
+      "run_number": 34,
+      "created_at": "2026-11-27T14:58:12Z",
+      "html_url": "https://github.com/example-org/example-app/actions/runs/9100000209"
+    },
+    {
+      "id": 9100000208,
+      "name": "CI",
+      "head_branch": "main",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 425,
+      "created_at": "2026-11-27T12:30:00Z",
+      "html_url": "https://github.com/example-org/example-app/actions/runs/9100000208"
+    },
+    {
+      "id": 9100000207,
+      "name": "Lint",
+      "head_branch": "main",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 192,
+      "created_at": "2026-11-27T12:30:00Z",
+      "html_url": "https://github.com/example-org/example-app/actions/runs/9100000207"
+    }
+  ]
+}
